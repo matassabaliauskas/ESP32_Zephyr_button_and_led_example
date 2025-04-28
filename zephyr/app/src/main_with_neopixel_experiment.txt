@@ -1,0 +1,71 @@
+#include <stdio.h>
+#include <zephyr/device.h>
+#include <zephyr/zephyr.h>
+#include <zephyr/drivers/gpio.h>
+
+
+#define BUILT_IN_LED  2  // Built-in LED on ESP32
+static const struct device *gpio_ct_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+
+
+void main(void) {
+
+	printf("main: start of main\n");
+
+	
+	
+	int pin_config;
+	int pin_set;
+
+	// setup: check that the device is ready
+	if (!device_is_ready(gpio_ct_dev)) {
+		// something went wrong with the device. it is not ready!
+		return -1;
+	}
+	printf("main: device is ready!\n");
+
+	// configure the LED output mode, pin25
+	pin_config = gpio_pin_configure(gpio_ct_dev, BUILT_IN_LED, GPIO_OUTPUT_ACTIVE);
+	if (pin_config != 0) {
+		// something went wrong with configuring the pin!
+		return -1;
+	}
+	printf("main: pin is configured!\n");
+
+
+	//printf("main: initializing NeoPixel...\n");
+	//Adafruit_NeoPixel pixels(NUM_PIXELS, PIN_NEO_PIXEL, NEO_GRB + NEO_KHZ800);
+  	//pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
+  	//pixels.clear(); // Set all pixel colors to 'off'
+	//pixels.setPixelColor(NEO_PIXEL_2, pixels.Color(0, 0, 0)); // low brightness bright white
+  	//pixels.show();
+	printf("main: end of setup\n");
+
+	
+	while (true) {
+		
+		// LED = HIGH
+		pin_set = gpio_pin_set_raw(gpio_ct_dev, BUILT_IN_LED, 1);
+		if (pin_set != 0){
+			// something went wrong with setting the pin!
+			return -1;
+		}
+		//pixels.setPixelColor(NEO_PIXEL_2, pixels.Color(0, 1, 0)); // low brightness bright white
+  		//pixels.show();
+		printf("main: LED = HIGH!\n");
+		k_msleep(1000);
+
+		// LED = LOW
+		pin_set = gpio_pin_set_raw(gpio_ct_dev, BUILT_IN_LED, 0);
+		if (pin_set != 0){
+			// something went wrong with setting the pin!
+			return -1;
+		}
+		//pixels.setPixelColor(NEO_PIXEL_2, pixels.Color(0, 0, 0)); // low brightness bright white
+  		//pixels.show();
+		printf("main: LED = LOW!\n");
+		k_msleep(1000);
+
+	}
+	
+}

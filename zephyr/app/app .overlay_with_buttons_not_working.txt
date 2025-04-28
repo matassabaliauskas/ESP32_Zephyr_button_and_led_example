@@ -1,0 +1,23 @@
+/ {
+        /*
+        aliases {
+                sw0 = &button0;
+        };
+        */
+
+        buttons {
+                compatible = "gpio-keys";
+                button0: button_0 {
+                        gpios = < &gpio1 39 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH) >;
+                        label = "User button";
+                };
+                /* ... other buttons ... */
+        };
+
+	leds {
+		compatible = "gpio-leds";
+		blinking_led: blinking_led {
+			gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+		};
+	};
+};

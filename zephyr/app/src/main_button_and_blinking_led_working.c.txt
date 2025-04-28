@@ -1,0 +1,222 @@
+// main_blinking_led_with_button_working.c
+
+#include <stdio.h>
+#include <zephyr/device.h>
+#include <zephyr/zephyr.h>
+#include <zephyr/drivers/gpio.h>
+
+#define SLEEP_TIME_MS	10
+
+//#define BUILT_IN_LED  2  // Built-in LED on ESP32
+//static const struct device *gpio_ct_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_NODELABEL(blinking_led), gpios);
+static struct gpio_callback button_cb_data;
+
+/*
+ * Get button configuration from the devicetree sw0 alias. This is mandatory.
+ */
+//static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(DT_NODELABEL(button_0), gpios);
+//static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(DT_ALIAS(sw0), gpios);
+#define SW0_NODE	DT_ALIAS(sw0)
+#if !DT_NODE_HAS_STATUS(SW0_NODE, okay)
+#error "Unsupported board: sw0 devicetree alias is not defined"
+#endif
+static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios, {0});
+
+
+void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+	printk("Button pressed at %" PRIu32 "\n", k_cycle_get_32());
+}
+
+
+
+int main(void) {
+
+	printf("main: start of main\n");
+
+	// setup: check that the led device is ready
+	if (!device_is_ready(led.port)) {
+		// something went wrong with the device. it is not ready!
+		printk("Error: LED device %s is not ready; ignoring it\n", led.port->name);
+		return -1;
+	}
+	printf("main: led device is ready!\n");
+
+	// configure the LED output mode, pin2
+	//led_config = gpio_pin_configure(gpio_ct_dev, BUILT_IN_LED, GPIO_OUTPUT_ACTIVE);
+	int led_config = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+	if (led_config != 0) {
+		// something went wrong with configuring the pin!
+		printk("Error %d: failed to configure LED device %s pin %d\n", led_config, led.port->name, led.pin);
+		return -1;
+	}
+	printf("main: led pin is configured!\n");
+
+
+
+
+	if (!gpio_is_ready_dt(&button)) {
+		printk("Error: button device %s is not ready\n", button.port->name);
+		return 0;
+	}
+	printf("main: button device is ready!\n");
+
+	int btn_config = gpio_pin_configure_dt(&button, GPIO_INPUT);
+	if (btn_config != 0) {
+		printk("Error %d: failed to configure %s pin %d\n", btn_config, button.port->name, button.pin);
+		return 0;
+	}
+	printf("main: button pin is configured!\n");
+
+	btn_config = gpio_pin_interrupt_configure_dt(&button, GPIO_INT_EDGE_TO_ACTIVE);
+	if (btn_config != 0) {
+		printk("Error %d: failed to configure interrupt on %s pin %d\n",
+			btn_config, button.port->name, button.pin);
+		return 0;
+	}
+	printf("main: button interrupt is configured!\n");
+	
+	gpio_init_callback(&button_cb_data, button_pressed, BIT(button.pin));
+	gpio_add_callback(button.port, &button_cb_data);
+	printk("Set up button at %s pin %d\n", button.port->name, button.pin);
+
+	if (led.port && !gpio_is_ready_dt(&led)) {
+		printk("Error %d: LED device %s is not ready; ignoring it\n",
+		       btn_config, led.port->name);
+		return -1;
+	}
+
+	if (led.port) {
+		btn_config = gpio_pin_configure_dt(&led, GPIO_OUTPUT);
+		if (btn_config != 0) {
+			printk("Error %d: failed to configure LED device %s pin %d\n",
+			       btn_config, led.port->name, led.pin);
+			return -1;
+		} else {
+			printk("Set up LED at %s pin %d\n", led.port->name, led.pin);
+		}
+	}
+
+	printk("Press the button\n");
+	if (led.port) {
+		while (1) {
+			/* If we have an LED, match its state to the button's. */
+			int btn_state = gpio_pin_get_dt(&button);
+
+			if (btn_state > 0) {
+				//gpio_pin_set_dt(&led, btn_state);
+
+				// LED = HIGH
+				int pin_set = gpio_pin_set_dt(&led, btn_state);
+				if (pin_set != 0){
+					return -1;
+				}
+				printf("main: LED = HIGH!\n");
+
+			} else if (btn_state == 0) {
+				// LED = LOW
+				int pin_set = gpio_pin_set_dt(&led, btn_state);
+				if (pin_set != 0){
+					return -1;
+				}
+
+			} else {
+				printf("main: btn_state is unknown! btn_state = %d\n", btn_state);
+			}
+			
+			k_msleep(SLEEP_TIME_MS);
+		}
+	}
+	return 0;
+
+
+
+	/* 
+	
+	
+	
+
+	int led_config;
+	int pin_set;
+
+	// setup: check that the led device is ready
+	if (!device_is_ready(led.port)) {
+		// something went wrong with the device. it is not ready!
+		printk("Error: LED device %s is not ready; ignoring it\n", led.port->name);
+		return -1;
+	}
+	printf("main: led device is ready!\n");
+
+	// setup: check that the button device is ready
+	if (!gpio_is_ready_dt(&button)) {
+		// something went wrong with the device. it is not ready!
+		printk("Error: button device %s is not ready\n", button.port->name);
+		return -1;
+	}
+	printf("main: button device is ready!\n");
+
+	// configure the LED output mode, pin2
+	//led_config = gpio_led_configure(gpio_ct_dev, BUILT_IN_LED, GPIO_OUTPUT_ACTIVE);
+	led_config = gpio_led_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+	if (led_config != 0) {
+		// something went wrong with configuring the pin!
+		printk("Error %d: failed to configure LED device %s pin %d\n", led_config, led.port->name, led.pin);
+		return -1;
+	}
+	printf("main: led pin is configured!\n");
+
+
+	// configure the button as input mode
+	//led_config = gpio_led_configure_dt(&button, GPIO_INPUT);
+	int btn_ret = gpio_led_configure_dt(&button, GPIO_INPUT);
+	if (btn_ret != 0) {
+		printk("Error %d: failed to configure %s pin %d\n", btn_ret, button.port->name, button.pin);
+		// Error -134: failed to configure gpio@3ff44800 pin 39
+		return 0;
+	}
+	printf("main: button pin is configured!\n");
+
+	printf("main: end of setup\n");
+
+	while (true) {
+
+		// Button
+		int read_btn = gpio_pin_get_dt(&button);
+		if (read_btn >= 0) {
+			printf("main: BUTTON = HIGH!\n");
+			gpio_pin_set_dt(&led, read_btn);
+		}
+		k_msleep(SLEEP_TIME_MS);
+
+		
+
+		// LED = HIGH
+		//pin_set = gpio_pin_set_raw(gpio_ct_dev, BUILT_IN_LED, 1);
+		// pin_set = gpio_pin_set_dt(&led, 1);
+		// if (pin_set != 0){
+		// 	// something went wrong with setting the pin!
+		// 	return -1;
+		// }
+		// printf("main: LED = HIGH!\n");
+		// k_msleep(1000);
+
+		// // LED = LOW
+		// pin_set = gpio_pin_set_dt(&led, 0);
+		// if (pin_set != 0){
+		// 	// something went wrong with setting the pin!
+		// 	return -1;
+		// }
+		// printf("main: LED = LOW!\n");
+		// k_msleep(1000);
+
+		
+
+	
+	}
+	return 0;
+
+	*/
+	
+}

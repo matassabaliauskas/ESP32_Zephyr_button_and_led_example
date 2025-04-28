@@ -1,0 +1,64 @@
+#include <stdio.h>
+#include <zephyr/device.h>
+#include <zephyr/zephyr.h>
+#include <zephyr/drivers/gpio.h>
+
+// main_blinking_led_working.c
+
+
+//#define BUILT_IN_LED  2  // Built-in LED on ESP32
+//static const struct device *gpio_ct_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_NODELABEL(blinking_led), gpios);
+
+
+void main(void) {
+
+	printf("main: start of main\n");
+
+	int pin_config;
+	int pin_set;
+
+	// setup: check that the device is ready
+	if (!device_is_ready(led.port)) {
+		// something went wrong with the device. it is not ready!
+		return -1;
+	}
+	printf("main: device is ready!\n");
+
+	// configure the LED output mode, pin2
+	//pin_config = gpio_pin_configure(gpio_ct_dev, BUILT_IN_LED, GPIO_OUTPUT_ACTIVE);
+	pin_config = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+	if (pin_config != 0) {
+		// something went wrong with configuring the pin!
+		return -1;
+	}
+	printf("main: pin is configured!\n");
+
+	printf("main: end of setup\n");
+
+	
+	while (true) {
+		
+		// LED = HIGH
+		//pin_set = gpio_pin_set_raw(gpio_ct_dev, BUILT_IN_LED, 1);
+		pin_set = gpio_pin_set_dt(&led, 1);
+		if (pin_set != 0){
+			// something went wrong with setting the pin!
+			return -1;
+		}
+		printf("main: LED = HIGH!\n");
+		k_msleep(1000);
+
+		// LED = LOW
+		pin_set = gpio_pin_set_dt(&led, 0);
+		if (pin_set != 0){
+			// something went wrong with setting the pin!
+			return -1;
+		}
+		printf("main: LED = LOW!\n");
+		k_msleep(1000);
+
+	}
+	
+}
